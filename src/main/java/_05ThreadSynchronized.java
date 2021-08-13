@@ -2,6 +2,7 @@
  * Created by showdy on 2021/8/6 22:35
  * <p>
  * 演示如何使用synchronized关键字
+ * @see <ref>https://www.cnblogs.com/aspirant/p/11470858.html</ref>
  * <p>
  * 锁对象包含：
  * 1. 对象内部有个标志位（state 为0 或者1），记录对象是否被某个线程占用
