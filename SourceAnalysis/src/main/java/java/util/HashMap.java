@@ -232,6 +232,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
 
     /**
      * The default initial capacity - MUST be a power of two.
+     * 默认初始化容量：16，必须是2的幂次方
      */
     static final int DEFAULT_INITIAL_CAPACITY = 1 << 4; // aka 16
 
@@ -239,11 +240,14 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * The maximum capacity, used if a higher value is implicitly specified
      * by either of the constructors with arguments.
      * MUST be a power of two <= 1<<30.
+     *
+     * 容量的最大值：1<<30
      */
     static final int MAXIMUM_CAPACITY = 1 << 30;
 
     /**
      * The load factor used when none specified in constructor.
+     * 加载因子：0.75 (在容量和性能之间取得一个经验值）
      */
     static final float DEFAULT_LOAD_FACTOR = 0.75f;
 
@@ -254,6 +258,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * than 2 and should be at least 8 to mesh with assumptions in
      * tree removal about conversion back to plain bins upon
      * shrinkage.
+     *
+     * 单链表树化的阈值：8
      */
     static final int TREEIFY_THRESHOLD = 8;
 
@@ -261,6 +267,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * The bin count threshold for untreeifying a (split) bin during a
      * resize operation. Should be less than TREEIFY_THRESHOLD, and at
      * most 6 to mesh with shrinkage detection under removal.
+     *
+     * 红黑树链化的阈值：6
      */
     static final int UNTREEIFY_THRESHOLD = 6;
 
@@ -269,6 +277,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * (Otherwise the table is resized if too many nodes in a bin.)
      * Should be at least 4 * TREEIFY_THRESHOLD to avoid conflicts
      * between resizing and treeification thresholds.
+     *
+     * 单链表树化的table元素个数：64
      */
     static final int MIN_TREEIFY_CAPACITY = 64;
 
@@ -277,10 +287,10 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * TreeNode subclass, and in LinkedHashMap for its Entry subclass.)
      */
     static class Node<K,V> implements Map.Entry<K,V> {
-        final int hash;
+        final int hash; // key的hash值
         final K key;
         V value;
-        Node<K,V> next;
+        Node<K,V> next; //链表下一个node节点的引用
 
         Node(int hash, K key, V value, Node<K,V> next) {
             this.hash = hash;
@@ -336,6 +346,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      */
     static final int hash(Object key) {
         int h;
+        //计算key的hash值：key的hashCode 异或 高16位，可以更好避免hash冲突。
         return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
     }
 
@@ -374,6 +385,15 @@ public class HashMap<K,V> extends AbstractMap<K,V>
 
     /**
      * Returns a power of two size for the given target capacity.
+     *
+     * 将给定的初始化容量值转为2的幂次方 比如 给定初始容量为10
+     *  int n = 10 -1 = 9 =1001
+     *  n = 1001 | 1001 >>> 1 = 1101
+     *  n = 1101 | 1101 >>> 2 = 1111
+     *  n = 1111 | 1111 >>> 4 = 1111
+     *  n = 1111 | 1111 >>> 8 = 1111
+     *  n = 1111 | 1111 >>> 16 = 1111
+     *  最终 capacity为 15 + 1 = 16
      */
     static final int tableSizeFor(int cap) {
         int n = cap - 1;
@@ -393,6 +413,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * (We also tolerate length zero in some operations to allow
      * bootstrapping mechanics that are currently not needed.)
      */
+    // 第一次使用时初始化，延迟创建
     transient Node<K,V>[] table;
 
     /**
@@ -413,6 +434,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * rehash).  This field is used to make iterators on Collection-views of
      * the HashMap fail-fast.  (See ConcurrentModificationException).
      */
+    // 插入和删除对map的改动次数， 修改不加入计算
     transient int modCount;
 
     /**
@@ -424,6 +446,8 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     // Additionally, if the table array has not been allocated, this
     // field holds the initial array capacity, or zero signifying
     // DEFAULT_INITIAL_CAPACITY.)
+    // 默认的阈值： 16 * 0.75 = 12
+    // 如果设定了初始容量比如：8 ，那么初始阈值为 8
     int threshold;
 
     /**
@@ -454,6 +478,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             throw new IllegalArgumentException("Illegal load factor: " +
                                                loadFactor);
         this.loadFactor = loadFactor;
+        //修正初始阈值为2的幂次方，如果设置初始容量，即此时 threshold == capacity
         this.threshold = tableSizeFor(initialCapacity);
     }
 
@@ -554,6 +579,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      */
     public V get(Object key) {
         Node<K,V> e;
+        //匹配hash 和key 获取node节点
         return (e = getNode(hash(key), key)) == null ? null : e.value;
     }
 
@@ -565,19 +591,30 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * @return the node, or null if none
      */
     final Node<K,V> getNode(int hash, Object key) {
-        Node<K,V>[] tab; Node<K,V> first, e; int n; K k;
+        Node<K,V>[] tab;
+        Node<K,V> first, e;
+        //table的长度
+        int n;
+        //table哈希桶的key值
+        K k;
         if ((tab = table) != null && (n = tab.length) > 0 &&
+                // 根据hash找到哈希桶的index，并取出第一个node节点
             (first = tab[(n - 1) & hash]) != null) {
+            // hash 相同 并且 key相同
             if (first.hash == hash && // always check first node
                 ((k = first.key) == key || (key != null && key.equals(k))))
                 return first;
+            //取出下一个node
             if ((e = first.next) != null) {
+                // 如果节点是TreeNode则在红黑树中查找
                 if (first instanceof TreeNode)
                     return ((TreeNode<K,V>)first).getTreeNode(hash, key);
                 do {
+                    // 如果是链表，则比较key 和hash是否相同
                     if (e.hash == hash &&
                         ((k = e.key) == key || (key != null && key.equals(k))))
                         return e;
+                    //循环遍历下一个节点Node
                 } while ((e = e.next) != null);
             }
         }
@@ -625,31 +662,42 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     final V putVal(int hash, K key, V value, boolean onlyIfAbsent,
                    boolean evict) {
         Node<K,V>[] tab; Node<K,V> p; int n, i;
+        //如果table是空，或者table长度为0
         if ((tab = table) == null || (n = tab.length) == 0)
+            //创建table并初始化计算长度
             n = (tab = resize()).length;
+        //如果table不为空，且对应哈希桶index位置上为空，则创建Node并放入
         if ((p = tab[i = (n - 1) & hash]) == null)
             tab[i] = newNode(hash, key, value, null);
         else {
             Node<K,V> e; K k;
+            //如果对应table的index位置上有值，且key和hash相同，则替换value值
             if (p.hash == hash &&
                 ((k = p.key) == key || (key != null && key.equals(k))))
                 e = p;
+            //如果key或者hash不同，且为TreeNode，则插入红黑树中
             else if (p instanceof TreeNode)
                 e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
             else {
+                //如果是链表，且hash或者key不相同
                 for (int binCount = 0; ; ++binCount) {
+                    // 取出node的下一个节点，且为空，则创建Node，并构建链表
                     if ((e = p.next) == null) {
                         p.next = newNode(hash, key, value, null);
+                        // 如果是第八个Node节点（从0累计）则树化
                         if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st
                             treeifyBin(tab, hash);
                         break;
                     }
+                    //如果下一个节点的key和hash相同则break
                     if (e.hash == hash &&
                         ((k = e.key) == key || (key != null && key.equals(k))))
                         break;
+                    //记录已经查找的node节点位置。
                     p = e;
                 }
             }
+            //表示已经查找到node节点，则替换value值，并返回oldValue
             if (e != null) { // existing mapping for key
                 V oldValue = e.value;
                 if (!onlyIfAbsent || oldValue == null)
@@ -658,7 +706,9 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                 return oldValue;
             }
         }
+        //修改次数+1
         ++modCount;
+        //插入后，如果size> threshold 则扩容
         if (++size > threshold)
             resize();
         afterNodeInsertion(evict);
@@ -678,22 +728,32 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         Node<K,V>[] oldTab = table;
         int oldCap = (oldTab == null) ? 0 : oldTab.length;
         int oldThr = threshold;
+        // 新容量,新阈值
         int newCap, newThr = 0;
+        // 原始容量大于0
         if (oldCap > 0) {
             if (oldCap >= MAXIMUM_CAPACITY) {
                 threshold = Integer.MAX_VALUE;
                 return oldTab;
             }
+            // 原始容量扩容两倍
             else if ((newCap = oldCap << 1) < MAXIMUM_CAPACITY &&
+                    // 初始容量大于16
                      oldCap >= DEFAULT_INITIAL_CAPACITY)
+                //则 新阈值扩大两倍 12-> 24
                 newThr = oldThr << 1; // double threshold
         }
+        // 原始容量等于0，且原始阈值大于0，即通过构函数传入capacity参数的构建的hashMap
         else if (oldThr > 0) // initial capacity was placed in threshold
+            //新容量 == 旧阈值，即初始化传入capacity是多少，扩容就多少，比如是10，
+            // threshold经过校验变为16，那么新的容量也是16
             newCap = oldThr;
+        // 使用无参数构造创建的hashMap，设置默认的容量和阈值。
         else {               // zero initial threshold signifies using defaults
             newCap = DEFAULT_INITIAL_CAPACITY;
             newThr = (int)(DEFAULT_LOAD_FACTOR * DEFAULT_INITIAL_CAPACITY);
         }
+        // 新阈值为0？？？
         if (newThr == 0) {
             float ft = (float)newCap * loadFactor;
             newThr = (newCap < MAXIMUM_CAPACITY && ft < (float)MAXIMUM_CAPACITY ?
@@ -701,6 +761,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         }
         threshold = newThr;
         @SuppressWarnings({"rawtypes","unchecked"})
+         //创建新容量的tab
         Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];
         table = newTab;
         if (oldTab != null) {
@@ -718,6 +779,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                         Node<K,V> next;
                         do {
                             next = e.next;
+                            // 如果 hash & len==0 ,则新桶的index也不变
                             if ((e.hash & oldCap) == 0) {
                                 if (loTail == null)
                                     loHead = e;
@@ -725,6 +787,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                                     loTail.next = e;
                                 loTail = e;
                             }
+                            // 如果 hash & len ！=0 ,则新桶的index为原始index+oldCapacity
                             else {
                                 if (hiTail == null)
                                     hiHead = e;
